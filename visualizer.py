@@ -1,6 +1,9 @@
 import pygame
+import pygame_menu
 import math
 from queue import PriorityQueue
+
+pygame.init()
 
 WIDTH = 800
 WIN = pygame.display.set_mode((WIDTH, WIDTH))
@@ -17,6 +20,7 @@ ORANGE = (255, 165 ,0)
 GREY = (128, 128, 128)
 TURQUOISE = (64, 224, 208)
 
+
 class Node:
 	def __init__(self, row, col, width, total_rows):
 		self.row = row
@@ -24,7 +28,7 @@ class Node:
 		self.x = row * width
 		self.y = col * width
 		self.color = WHITE
-		self.neighbourss = []
+		self.neighbours = []
 		self.width = width
 		self.total_rows = total_rows
 
@@ -70,19 +74,19 @@ class Node:
 	def draw(self, win):
 		pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
 
-	def update_neighbourss(self, grid):
-		self.neighbourss = []
+	def update_neighbours(self, grid):
+		self.neighbours = []
 		if self.row < self.total_rows - 1 and not grid[self.row + 1][self.col].is_barrier(): # DOWN
-			self.neighbourss.append(grid[self.row + 1][self.col])
+			self.neighbours.append(grid[self.row + 1][self.col])
 
 		if self.row > 0 and not grid[self.row - 1][self.col].is_barrier(): # UP
-			self.neighbourss.append(grid[self.row - 1][self.col])
+			self.neighbours.append(grid[self.row - 1][self.col])
 
 		if self.col < self.total_rows - 1 and not grid[self.row][self.col + 1].is_barrier(): # RIGHT
-			self.neighbourss.append(grid[self.row][self.col + 1])
+			self.neighbours.append(grid[self.row][self.col + 1])
 
 		if self.col > 0 and not grid[self.row][self.col - 1].is_barrier(): # LEFT
-			self.neighbourss.append(grid[self.row][self.col - 1])
+			self.neighbours.append(grid[self.row][self.col - 1])
 
 	def __lt__(self, other):
 		return False
@@ -91,7 +95,7 @@ class Node:
 def h(p1, p2):
 	x1, y1 = p1
 	x2, y2 = p2
-	return abs(x1 - x2) + abs(y1 - y2)
+	return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
 
 def reconstruct_path(came_from, current, draw):
@@ -100,6 +104,40 @@ def reconstruct_path(came_from, current, draw):
 		current.make_path()
 		draw()
 
+
+def bfs(draw, start, end):
+	visited = []
+	queue = []
+
+	visited.append(start)
+	queue.append(start)
+
+	while queue:
+		current = queue.pop(0)
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+		
+		if current == end:
+			current.make_end()
+			return True
+		
+		for neighbour in current.neighbours:
+
+			if neighbour not in visited:
+				visited.append(neighbour)
+				queue.append(neighbour)
+				neighbour.make_open()
+
+			
+
+			if neighbour == end:
+				neighbour.make_end()
+				return True
+		
+		draw()
+
+	return False
 
 def algorithm(draw, grid, start, end):
 	count = 0
@@ -126,18 +164,18 @@ def algorithm(draw, grid, start, end):
 			end.make_end()
 			return True
 
-		for neighbours in current.neighbourss:
+		for neighbour in current.neighbours:
 			temp_g_score = g_score[current] + 1
 
-			if temp_g_score < g_score[neighbours]:
-				came_from[neighbours] = current
-				g_score[neighbours] = temp_g_score
-				f_score[neighbours] = temp_g_score + h(neighbours.get_pos(), end.get_pos())
-				if neighbours not in open_set_hash:
+			if temp_g_score < g_score[neighbour]:
+				came_from[neighbour] = current
+				g_score[neighbour] = temp_g_score
+				f_score[neighbour] = temp_g_score + h(neighbour.get_pos(), end.get_pos())
+				if neighbour not in open_set_hash:
 					count += 1
-					open_set.put((f_score[neighbours], count, neighbours))
-					open_set_hash.add(neighbours)
-					neighbours.make_open()
+					open_set.put((f_score[neighbour], count, neighbour))
+					open_set_hash.add(neighbour)
+					neighbour.make_open()
 
 		draw()
 
@@ -187,6 +225,15 @@ def get_clicked_pos(pos, rows, width):
 
 	return row, col
 
+def set_a_star():
+	global mode
+	mode = 0
+	print(mode)
+
+def set_bfs():
+	global mode
+	mode = 1
+	print(mode)
 
 def main(win, width):
 	ROWS = 50
@@ -196,8 +243,10 @@ def main(win, width):
 	end = None
 
 	run = True
+	mode = 0
 	while run:
 		draw(win, grid, ROWS, width)
+
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				run = False
@@ -228,12 +277,19 @@ def main(win, width):
 					end = None
 
 			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_b:
+					mode = 1
+				if event.key == pygame.K_a:
+					mode = 0
+
 				if event.key == pygame.K_SPACE and start and end:
 					for row in grid:
 						for node in row:
-							node.update_neighbourss(grid)
-
-					algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+							node.update_neighbours(grid)
+					if mode == 0:
+						algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
+					else:
+						bfs(lambda: draw(win, grid, ROWS, width), start, end)
 
 				if event.key == pygame.K_c:
 					start = None
