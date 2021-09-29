@@ -105,6 +105,42 @@ def reconstruct_path(came_from, current, draw):
 		draw()
 
 
+def dfs(draw, grid, start, end):
+	visited ={node: False for row in grid for node in row}
+	stack = []
+
+	stack.append(start)
+
+	while (len(stack)):
+		current = stack[-1]
+		stack.pop()
+
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+		
+		if current == end:
+			current.make_end()
+			return True
+
+		if (not visited[current]):
+			visited[current] = True
+
+		for neighbour in current.neighbours:
+			if (not visited[neighbour]):
+				stack.append(neighbour)
+				neighbour.make_open()
+
+			if neighbour == end:
+				neighbour.make_end()
+				return True
+
+		draw()
+	
+	return False
+
+
+
 def bfs(draw, start, end):
 	visited = []
 	queue = []
@@ -128,8 +164,6 @@ def bfs(draw, start, end):
 				visited.append(neighbour)
 				queue.append(neighbour)
 				neighbour.make_open()
-
-			
 
 			if neighbour == end:
 				neighbour.make_end()
@@ -225,15 +259,6 @@ def get_clicked_pos(pos, rows, width):
 
 	return row, col
 
-def set_a_star():
-	global mode
-	mode = 0
-	print(mode)
-
-def set_bfs():
-	global mode
-	mode = 1
-	print(mode)
 
 def main(win, width):
 	ROWS = 50
@@ -277,10 +302,12 @@ def main(win, width):
 					end = None
 
 			if event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_b:
-					mode = 1
 				if event.key == pygame.K_a:
 					mode = 0
+				if event.key == pygame.K_b:
+					mode = 1
+				if event.key == pygame.K_d:
+					mode = 2
 
 				if event.key == pygame.K_SPACE and start and end:
 					for row in grid:
@@ -288,8 +315,10 @@ def main(win, width):
 							node.update_neighbours(grid)
 					if mode == 0:
 						algorithm(lambda: draw(win, grid, ROWS, width), grid, start, end)
-					else:
+					elif mode == 1:
 						bfs(lambda: draw(win, grid, ROWS, width), start, end)
+					else:
+						dfs(lambda: draw(win, grid, ROWS, width), grid, start, end)
 
 				if event.key == pygame.K_c:
 					start = None
